@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Audio Similarity Comparison</title>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+        }
+
+        h1 {
+            text-align: center;
+        }
+
+        textarea {
+            width: 100%;
+            padding: 10px;
+            font-size: 16px;
+            margin-bottom: 20px;
+        }
+
+        select, button {
+            padding: 10px;
+            margin: 10px;
+        }
+
+        #download-link {
+            display: inline-block;
+            margin-top: 30px;  /* 增加上方空隙 */
+            padding: 10px 20px;
+            background-color: #4CAF50;
+            color: white;
+            text-decoration: none;
+            border-radius: 8px;
+            font-size: 1rem;
+        }
+
+        .section {
+            margin-bottom: 40px;
+        }
+
+        #user-audio-player, #audio-player {
+            margin-top: 20px;
+            display: inline-block;
+        }
+
+        a {
+            margin-top: 10px;
+            display: inline-block;
+        }
+
+        #countdown {
+            font-size: 24px;
+            color: red;
+            font-weight: bold;
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Audio Similarity Comparison</h1>
+
+    <!-- Section 1: Text-to-Speech and Translation -->
+    <div class="section">
+        <h2>Text-to-Speech and Translation</h2>
+        <textarea id="text-input" placeholder="Enter text here" rows="4" cols="50"></textarea><br>
+
+        <label for="src-lang">Source Language:</label>
+        <select id="src-lang">
+            <option value="zh-TW">Chinese (Traditional)</option>
+            <option value="en">English</option>
+        </select>
+
+        <label for="dest-lang">Destination Language:</label>
+        <select id="dest-lang">
+            <option value="en">English</option>
+            <option value="zh-TW">Chinese (Traditional)</option>
+        </select><br>
+
+        <button id="generate-audio">Generate Audio</button>
+        <p>Translated text: <span id="translated-text"></span></p>
+
+        <audio id="audio-player" controls style="display:none;">
+            <source id="audio-source" type="audio/wav">
+            Your browser does not support the audio element.
+        </audio><br>
+
+        <a id="download-link" href="#" download style="display:none;">Download Audio</a><br><br>
+    </div>
+
+    <!-- Section 2: User Audio Recording -->
+    <div class="section">
+        <h2>Record Your Audio</h2>
+        <button id="start-recording">Start Recording</button>
+        <button id="stop-recording" disabled>Stop Recording</button><br><br>
+
+        <div id="countdown"></div> <!-- 倒计时显示 -->
+
+        <audio id="user-audio-player" controls style="display:none;">
+            <source id="user-audio-source" type="audio/*">
+            Your browser does not support the audio element.
+        </audio><br><br>
+
+        <a id="download-recorded-link" href="#" download style="display:none;">Download Your Audio</a><br><br>
+    </div>
+
+    <!-- Section 3: Upload and Compare Two Audio Files -->
+    <div class="section">
+        <h2>Upload Two Audio Files for Comparison</h2>
+        <label for="audio-file-1">Audio File 1:</label>
+        <input type="file" id="audio-file-1" accept="audio/*"><br><br>
+        
+        <label for="audio-file-2">Audio File 2:</label>
+        <input type="file" id="audio-file-2" accept="audio/*"><br><br>
+
+        <button id="compare-uploaded-audio">Compare Audio</button><br><br>
+
+        <p id="compare-result-uploaded"></p>
+    </div>
+
+    <script>
+        let mediaRecorder;
+        let audioChunks = [];
+        let userAudioBlob;
+        let userAudioURL;
+        let audioFile1 = null;
+        let audioFile2 = null;
+
+        // Section 2: Recording User Audio with countdown
+        document.getElementById('start-recording').addEventListener('click', () => {
+            // Show countdown
+            let countdown = 3; // Set countdown time (in seconds)
+            const countdownElement = document.getElementById('countdown');
+            countdownElement.innerText = `Recording starts in: ${countdown}s`;
+
+            // Countdown logic
+            const countdownInterval = setInterval(() => {
+                countdown--;
+                countdownElement.innerText = `Recording starts in: ${countdown}s`;
+                if (countdown === 0) {
+                    clearInterval(countdownInterval);
+                    countdownElement.innerText = 'Recording...';
+
+                    // Start recording after countdown
+                    navigator.mediaDevices.getUserMedia({ audio: true })
+                        .then(stream => {
+                            mediaRecorder = new MediaRecorder(stream);
+                            mediaRecorder.ondataavailable = event => {
+                                audioChunks.push(event.data);
+                            };
+                            mediaRecorder.onstop = () => {
+                                userAudioBlob = new Blob(audioChunks, { type: 'audio/wav' });
+                                userAudioURL = URL.createObjectURL(userAudioBlob);
+
+                                // Update audio player with recorded audio
+                                const userAudioPlayer = document.getElementById('user-audio-player');
+                                const userAudioSource = document.getElementById('user-audio-source');
+                                userAudioSource.src = userAudioURL;
+
+                                // Show the audio player for the recorded audio
+                                userAudioPlayer.style.display = 'inline';
+                                userAudioPlayer.load(); // Reload the audio player with the new file
+
+                                // Enable the download link for the recorded audio
+                                const downloadLink = document.getElementById('download-recorded-link');
+                                downloadLink.href = userAudioURL;
+                                downloadLink.style.display = 'inline'; // Show the download link
+                            };
+
+                            mediaRecorder.start();
+                            document.getElementById('start-recording').disabled = true;
+                            document.getElementById('stop-recording').disabled = false;
+                        })
+                        .catch(error => {
+                            alert('Error accessing audio device: ' + error);
+                        });
+                }
+            }, 1000);
+        });
+
+        // Stop recording user audio
+        document.getElementById('stop-recording').addEventListener('click', () => {
+            mediaRecorder.stop();
+            document.getElementById('start-recording').disabled = false;
+            document.getElementById('stop-recording').disabled = true;
+            document.getElementById('countdown').innerText = '';  // Clear countdown
+        });
+
+        // When clicking on the "Generate Audio" button for text-to-speech
+        document.getElementById('generate-audio').addEventListener('click', () => {
+            const text = document.getElementById('text-input').value;
+            const srcLang = document.getElementById('src-lang').value;
+            const destLang = document.getElementById('dest-lang').value;
+
+            if (!text) {
+                alert("Please enter text to generate audio.");
+                return;
+            }
+
+            fetch('/api/speak', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ text: text, src_lang: srcLang, dest_lang: destLang })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    document.getElementById('translated-text').innerText = data.translated_text;
+
+                    // Update the audio player to play the generated audio
+                    const audioPlayer = document.getElementById('audio-player');
+                    const audioSource = document.getElementById('audio-source');
+                    audioSource.src = '/download/' + data.filename;
+                    audioPlayer.style.display = 'inline';
+                    audioPlayer.load(); // Reload the audio player with the new file
+
+                    // Update download link
+                    document.getElementById('download-link').href = '/download/' + data.filename;
+                    document.getElementById('download-link').style.display = 'inline';
+                } else {
+                    alert('Error generating audio: ' + data.error);
+                }
+            })
+            .catch(() => alert('Failed to generate audio.'));
+        });
+
+        // Section 3: Compare Two Uploaded Audio Files
+        document.getElementById('compare-uploaded-audio').addEventListener('click', () => {
+            const file1 = document.getElementById('audio-file-1').files[0];
+            const file2 = document.getElementById('audio-file-2').files[0];
+
+            if (!file1 || !file2) {
+                alert('Please select both audio files to compare.');
+                return;
+            }
+
+            // Prepare the FormData for file upload
+            const formData = new FormData();
+            formData.append('user_audio', file1);
+            formData.append('generated_audio', file2);
+
+            fetch('/api/compare', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    document.getElementById('compare-result-uploaded').innerText = 'Similarity: ' + data.similarity + '%';
+                } else {
+                    document.getElementById('compare-result-uploaded').innerText = 'Error: ' + data.error;
+                }
+            })
+            .catch(() => alert('Failed to compare the audio files.'));
+        });
+    </script>
+</body>
+</html>
+
+
+
+
+
+
