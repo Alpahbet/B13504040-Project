@@ -52,14 +52,14 @@
 ### 後端目錄結構
 ```
 Backend/
-├── app.py                 # 主伺服器程式
+├── Trem.py                 # 主伺服器程式
 ├── requirements.txt       # 依賴清單
 ├── utils/
 │   └── helpers.py         # 工具函數（特徵提取與檔案管理）
 ```
 
 - **核心組件**：
-  - `app.py`：負責處理所有 API 路由和邏輯。
+  - `Trem.py`：負責處理所有 API 路由和邏輯。
   - `helpers.py`：包含音頻特徵提取和數據處理邏輯。
 
 ### 前端目錄結構
